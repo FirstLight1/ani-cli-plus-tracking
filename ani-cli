@@ -343,6 +343,7 @@ play_episode() {
             ;;
         *) nohup $player_function "$episode" >/dev/null 2>&1 & ;;
     esac
+    track.py run "${allanime_title}" "$ep_no" &
     replay="$episode"
     unset episode
     update_history

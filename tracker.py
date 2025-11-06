@@ -7,6 +7,7 @@ import requests
 import os
 from dotenv import load_dotenv
 from requests_oauthlib import OAuth2Session
+import mpv
 
 def load_environment_variables():
     load_dotenv()
@@ -15,11 +16,6 @@ def load_environment_variables():
     client_secret = os.getenv("SECRET")
     redirect_uri = os.getenv("REDIRECT")
     access_token = os.getenv("ACCESS_TOKEN")
-
-
-
-
-    
 
 def open_authorization_url():
     webbrowser.open(f"https://anilist.co/api/v2/oauth/authorize?client_id={client_id}&redirect_uri={redirect_uri}&response_type=code")
@@ -43,6 +39,45 @@ def open_authorization_url():
         print("Error: No code found in URL")
         return None
 
+def updateProgress(title, progress):
+    query = '''
+        query MyQuery {
+            Media(search: "{title}") {
+                id
+                }
+        }
+        '''
+    url = 'https://graphql.anilist.co'
+    headers = {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+    }
+    body={
+        'query':query
+    }
+    response = requests.post(url, headers=headers, json=body)
+    print(response.json())
+
+    update_query = '''
+    mutation MyMutation {
+        SaveMediaListEntry(mediaId: {mediaId}, progress: {progress}) {
+            progress
+        }
+    }
+    '''
+    update_body={
+        'query':update_query.replace("{mediaId}", str(response.json()['data']['Media']['id'])).replace("{progress}", str(progress))
+    }
+    authHeader = {
+        'Authorization': f'Bearer {access_token}',
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+    }
+
+    update_response = requests.post(url, headers=authHeader, json=update_body)
+    print(update_response.json())
+
+
 
 if __name__ == "__main__":
     if (not os.path.exists(".env")):
@@ -64,32 +99,5 @@ if __name__ == "__main__":
         sys.exit(0)
     elif (sys.argv[1] == 'run'):
         print('main')
-        query = '''
-        query MyQuery {
-            MediaListCollection(userName: "FirstLight", type: ANIME, status: COMPLETED) {
-                lists {
-                    entries {
-                        score
-                        status
-                        media {
-                            title {
-                            english
-                            }
-                        id
-                        }
-                    }
-                }
-            }
-        }
-        '''
-        url = 'https://graphql.anilist.co'
-        headers = {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-        }
-        body={
-            'query':query
-        }
-        response = requests.post(url, headers=headers, json=body)
-        print(response.json())
+        updateProgress(sys.argv[2], sys.argv[3])
         sys.exit(0)
