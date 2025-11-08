@@ -559,7 +559,8 @@ while cmd=$(printf "next\nreplay\nprevious\nselect\nchange_quality\nquit" | nth 
             new_quality="$(printf "%s" "$links" | launcher | cut -d\> -f1)"
             select_quality "$new_quality"
             ;;
-        *) exit 0 ;;
+        *) exit 0
+		(ani-tracker kill &)	;;
     esac
     [ -z "$ep_no" ] && die "Out of range"
     play

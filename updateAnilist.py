@@ -114,9 +114,12 @@ def format_time(seconds):
         return f"{hours:02d}:{minutes:02d}:{secs:02d}"
     return f"{minutes:02d}:{secs:02d}"
 
-def cli_main(title, progress):
+def cli_main(title, progress, command=None):
     player = MPVClient()
-    
+    if command == "kill":
+        print("Killing mpv connection...")
+        player.close()
+        return
     # Wait for socket to exist
     print("Waiting for mpv to start...")
     while not os.path.exists("/tmp/mpvsocket"):
@@ -149,12 +152,12 @@ def cli_main(title, progress):
                 duration_str = format_time(duration)
                 remaining_str = format_time(remaining)
                 
-                if int(percent) == 80:
+                if int(percent) >= 80:
                     print("\nUpdating Anilist...")
-                    updateProgress(title, progress)  # Replace TITLE_PLACEHOLDER with actual title
+                    updateProgress(title, progress)  # Replace TITLE_PLACEHOLDER with actual 
+                    player.close()
                 status = "⏸ PAUSED" if paused else "▶ PLAYING"
-                
-                print(f"\r\033[K{status} | Time: {time_str} / {duration_str} ({percent:.1f}%) | Remaining: {remaining_str}", 
+                print(f"\r\033[K{status} | name: {player.filename} | Time: {time_str} / {duration_str} ({percent:.1f}%) | Remaining: {remaining_str}",
                       end="", flush=True)
             else:
                 print("\r\033[KWaiting for playback data...", end="", flush=True)
@@ -208,10 +211,10 @@ def open_authorization_url():
 
 def updateProgress(title, progress):
     title = title.split(" (")[0]  # Remove any extra info in parentheses
-    print(f"Updating progress for '{title}' to episode {progress}...")
+    print(f"Updating '{title}' to episode {progress}...")
     query = '''
         query MyQuery {
-            Media(search: "{title}") {
+            Media(search: "{title}" type: ANIME) {
                 id
                 episodes
                 }
@@ -227,8 +230,18 @@ def updateProgress(title, progress):
         'query':query
     }
     response = requests.post(url, headers=headers, json=body)
-    mediaId = response.json()['data']['Media']['id']
-    totalEpisodes = response.json()['data']['Media']['episodes']
+    try:
+        mediaId = response.json()['data']['Media']['id']
+    except TypeError:
+        print(response.json())
+        print("Error: Unexpected response format")
+        return
+    try:
+        totalEpisodes = response.json()['data']['Media']['episodes']
+    except TypeError:
+        print(response.json())
+        print("Error: Unexpected response format")
+        return
 
     authHeader = {
             'Authorization': f'Bearer {access_token}',
@@ -268,6 +281,7 @@ def updateProgress(title, progress):
         
 
         update_response = requests.post(url, headers=authHeader, json=update_body)
+        print(update_response.json())
 
 def get_config_dir():
     """Get or create config directory"""
@@ -314,6 +328,10 @@ ACCESS_TOKEN=
             print("Usage: ani-tracker run <title> <episode>")
             sys.exit(1)
         cli_main(sys.argv[2], int(sys.argv[3]))
+        #updateProgress(sys.argv[2], int(sys.argv[3]))
+        sys.exit(0)
+    elif (sys.argv[1] == 'kill'):
+        cli_main("","", "kill")
         sys.exit(0)
 
 if __name__ == "__main__":
