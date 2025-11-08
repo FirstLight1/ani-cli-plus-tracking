@@ -314,9 +314,12 @@ play_episode() {
         mpv*)
             if [ "$no_detach" = 0 ]; then
                 nohup $player_function $skip_flag --input-ipc-server=/tmp/mpvsocket --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" $subs_flag $refr_flag >/dev/null 2>&1 &
+                mpv_pid=$!
+                (ani-tracker run "${allanime_title}" "$ep_no" &)
             else
                 $player_function $skip_flag $subs_flag $refr_flag --input-ipc-server=/tmp/mpvsocket --force-media-title="${allanime_title}Episode ${ep_no}" "$episode"
                 mpv_exitcode=$?
+                (ani-tracker run "${allanime_title}" "$ep_no" &)
                 [ "$exit_after_play" = 1 ] && [ -z "$range" ] && exit "$mpv_exitcode"
             fi
             ;;
@@ -344,7 +347,6 @@ play_episode() {
         *) nohup $player_function "$episode" >/dev/null 2>&1 & ;;
     esac
     # update anilist in background
-    (cd "$(dirname "$0")" && .venv/bin/python3 updateAnilist.py run "${allanime_title}" "$ep_no" "$mpv_pid" &)
     replay="$episode"
     unset episode
     update_history
