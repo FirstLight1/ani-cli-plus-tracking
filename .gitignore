@@ -2,3 +2,6 @@
 .venv/
 dist/
 Tracker.py
+ani_cli_tracker.egg-info/
+build/
+To

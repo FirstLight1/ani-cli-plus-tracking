@@ -269,26 +269,52 @@ def updateProgress(title, progress):
 
         update_response = requests.post(url, headers=authHeader, json=update_body)
 
+def get_config_dir():
+    """Get or create config directory"""
+    from pathlib import Path
+    config_home = os.getenv('XDG_CONFIG_HOME', Path.home() / '.config')
+    config_dir = Path(config_home) / 'ani-cli-tracker'
+    config_dir.mkdir(parents=True, exist_ok=True)
+    return config_dir
 
+def main():
+    """Main entry point for the CLI"""
+    if not os.path.exists(get_config_dir() / '.env'):
+        print("Setting up config for first time...")
+        config_dir = get_config_dir()
+        env_template = """# AniList API Credentials
+ID=
+SECRET=
+REDIRECT=http://localhost
+ACCESS_TOKEN=
+"""
+        (config_dir / '.env').write_text(env_template)
+        print(f"Created config at: {config_dir / '.env'}")
+        print("Please edit with your credentials and run 'ani-tracker get-token'")
+        sys.exit(0)
 
-if __name__ == "__main__":
-    if (not os.path.exists(".env")):
-        print("Error: .env file not found. Please create one with your credentials.")
-        sys.exit(1)
     load_environment_variables()
+    
     if len(sys.argv) < 2:
-        print("Usage: tracker.py [command]")
-        print("Use 'tracker.py help' for more information.")
+        print("Usage: ani-tracker [command]")
+        print("Use 'ani-tracker help' for more information.")
         sys.exit(1)
     if (sys.argv[1] == 'get-token'):
         open_authorization_url()
         sys.exit(0)
     elif (sys.argv[1] == 'help'):
-        print("Usage: tracker.py [command]")
+        print("Usage: ani-tracker [command]")
         print("Commands:")
         print("  get-token   Get a new access token")
         print("  help        Show this help message")
+        print("  run <title> <episode>  Track anime progress")
         sys.exit(0)
     elif (sys.argv[1] == 'run'):
+        if len(sys.argv) < 4:
+            print("Usage: ani-tracker run <title> <episode>")
+            sys.exit(1)
         cli_main(sys.argv[2], int(sys.argv[3]))
         sys.exit(0)
+
+if __name__ == "__main__":
+    main()
